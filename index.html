@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SharedWorker Explained: One Worker, Many Browser Tabs</title>
+<meta name="description" content="A visual, interactive guide to the SharedWorker Web API: how one background worker serves many tabs through MessagePort, with code, a Dedicated Worker comparison and a live multi-tab demo.">
+<meta name="keywords" content="SharedWorker, Web Workers, MessagePort, JavaScript, cross-tab communication, Web API, Dedicated Worker">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="">
+<meta name="theme-color" content="#080a11">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SharedWorker Explained: One Worker, Many Browser Tabs">
+<meta property="og:description" content="A visual, interactive guide to the SharedWorker Web API: how one background worker serves many tabs through MessagePort, with code, a Dedicated Worker comparison and a live multi-tab demo.">
+<meta property="og:site_name" content="SharedWorker Explained">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SharedWorker Explained: One Worker, Many Browser Tabs">
+<meta name="twitter:description" content="A visual, interactive guide to the SharedWorker Web API: how one background worker serves many tabs through MessagePort, with code, a Dedicated Worker comparison and a live multi-tab demo.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23080a11'/%3E%3Cg fill='none' stroke='%233ddcf7' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='9' r='3'/%3E%3Ccircle cx='9' cy='23' r='3'/%3E%3Ccircle cx='23' cy='16' r='4' stroke='%239a8cf8'/%3E%3Cpath d='M12 10l7 4M12 22l7-4'/%3E%3C/g%3E%3C/svg%3E">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"SharedWorker Explained: One Worker, Many Browser Tabs","description":"A visual, interactive guide to the SharedWorker Web API: how one background worker serves many tabs through MessagePort, with code, a Dedicated Worker comparison and a live multi-tab demo.","inLanguage":"en","about":"SharedWorker Web API","proficiencyLevel":"Beginner","keywords":"SharedWorker, Web Workers, MessagePort, JavaScript, cross-tab communication, Web API","isBasedOn":"https://developer.mozilla.org/en-US/docs/Web/API/SharedWorker"}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#07080c; --bg2:#0d0f16; --card:#11131b; --line:#222636;
+  --text:#f5f6fa; --muted:#8c91a3; --dim:#5b6073;
+  --a:#35e0ff; --b:#a78bfa; --ok:#34d399; --warn:#fbbf24;
+  --glow-a:0 0 0 1px rgba(53,224,255,.55),0 0 28px rgba(53,224,255,.25);
+  --glow-b:0 0 0 1px rgba(167,139,250,.55),0 0 28px rgba(167,139,250,.25);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:radial-gradient(1200px 700px at 80% -10%,#141a2e 0,transparent 60%),radial-gradient(900px 600px at -10% 110%,#1a1230 0,transparent 55%),var(--bg);
+  color:var(--text);font-family:Inter,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+code,pre,.mono{font-family:"JetBrains Mono","Cascadia Code",Consolas,monospace}
+
+/* ---------- deck ---------- */
+.progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--a),var(--b));transition:width .5s cubic-bezier(.4,0,.2,1);z-index:5}
+.brand{position:fixed;top:18px;left:28px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);display:flex;gap:8px;align-items:center;z-index:5}
+.brand b{color:var(--a)}
+.deck{position:fixed;inset:0 0 64px 0}
+.slide{position:absolute;inset:0;padding:56px clamp(24px,5vw,80px) 8px;overflow:auto;display:flex;flex-direction:column;justify-content:center;
+  opacity:0;visibility:hidden;transform:translateX(70px);
+  transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1),visibility 0s .55s}
+.slide.before{transform:translateX(-70px)}
+.slide.active{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+.wrap{width:100%;max-width:1280px;margin:0 auto}
+.eyebrow{color:var(--a);font-size:clamp(12px,1.1vw,15px);letter-spacing:.18em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+h1,.h1{font-size:clamp(30px,4vw,58px);line-height:1.05;letter-spacing:-.02em;font-weight:750;margin-bottom:clamp(14px,2.4vh,28px)}
+h1 em,.h1 em{font-style:normal;background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+.reveal{opacity:0}
+.slide.active .reveal{animation:rise .6s cubic-bezier(.2,.7,.2,1) calc(var(--i,0)*90ms + 150ms) both}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+.nav{position:fixed;left:0;right:0;bottom:0;height:64px;display:flex;align-items:center;justify-content:center;gap:22px;z-index:5}
+.nav button{background:var(--card);border:1px solid var(--line);color:var(--text);width:40px;height:40px;border-radius:12px;cursor:pointer;display:grid;place-items:center;font-size:18px;transition:.2s}
+.nav button:hover{border-color:var(--a);box-shadow:var(--glow-a)}
+.nav button:disabled{opacity:.3;pointer-events:none}
+.dots{display:flex;gap:10px}
+.dots i{width:9px;height:9px;border-radius:9px;background:var(--line);cursor:pointer;transition:.35s}
+.dots i.on{width:30px;background:linear-gradient(90deg,var(--a),var(--b))}
+.count{position:fixed;right:28px;bottom:22px;color:var(--dim);font-size:13px;z-index:5}
+
+/* ---------- shared bits ---------- */
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:16px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:clamp(12px,1vw,14px);padding:5px 11px;border-radius:99px;border:1px solid var(--line);color:var(--muted);background:rgba(255,255,255,.03)}
+.badge.a{color:var(--a);border-color:rgba(53,224,255,.4);background:rgba(53,224,255,.08)}
+.badge.b{color:var(--b);border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.08)}
+.takeaway{display:inline-flex;align-items:center;gap:12px;padding:14px 22px;border-radius:14px;font-size:clamp(16px,1.7vw,24px);font-weight:650;
+  background:rgba(53,224,255,.07);box-shadow:var(--glow-a);animation:pulse 3s ease-in-out infinite}
+.takeaway svg{color:var(--a);font-size:1.3em}
+@keyframes pulse{50%{box-shadow:0 0 0 1px rgba(53,224,255,.8),0 0 40px rgba(53,224,255,.35)}}
+
+/* ---------- diagram (fan: tabs -> worker) ---------- */
+.dia{position:relative;display:flex;align-items:center}
+.tabs{display:flex;flex-direction:column;gap:14px}
+.tab{width:210px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:.3s}
+.tab .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:rgba(167,139,250,.12);color:var(--b);font-size:21px;flex:none}
+.tab b{display:block;font-size:17px}
+.tab small{color:var(--muted);font-size:13px}
+.tab.flash{box-shadow:var(--glow-b);transform:translateX(4px)}
+.fanwrap{position:relative;width:140px;align-self:stretch;flex:none}
+.fanwrap svg{position:absolute;inset:0;overflow:visible}
+.fanwrap path{fill:none;stroke:var(--a);stroke-width:2;stroke-dasharray:6 7;opacity:.75;animation:dash 1s linear infinite;transition:opacity .3s}
+.fanwrap path.off{opacity:.18;animation:none}
+@keyframes dash{to{stroke-dashoffset:-13}}
+.pk{position:absolute;left:0;top:0;width:12px;height:12px;border-radius:50%;background:var(--warn);box-shadow:0 0 14px 3px rgba(251,191,36,.7);offset-rotate:0deg;pointer-events:none;z-index:2}
+.pk.v{background:var(--b);box-shadow:0 0 14px 3px rgba(167,139,250,.75)}
+.worker{width:200px;padding:20px 16px;text-align:center;box-shadow:var(--glow-a);transition:.3s;flex:none}
+.worker .ic{font-size:34px;color:var(--a);display:block;margin:0 auto 6px}
+.worker b{font-size:20px;display:block}
+.worker small{color:var(--muted);font-size:13px}
+.worker.ping{transform:scale(1.05);box-shadow:0 0 0 1px var(--a),0 0 50px rgba(53,224,255,.5)}
+
+/* ---------- slide 1 ---------- */
+.s1{display:grid;grid-template-columns:minmax(300px,1fr) auto;gap:clamp(24px,4vw,64px);align-items:center}
+.points{list-style:none;display:grid;gap:12px}
+.points li{display:flex;align-items:center;gap:14px;font-size:clamp(16px,1.6vw,23px)}
+.points .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:rgba(53,224,255,.1);color:var(--a);font-size:21px;flex:none}
+.points b{color:var(--a);font-weight:650}
+
+/* ---------- slide 2 ---------- */
+.s2{display:grid;grid-template-columns:300px 1fr;gap:clamp(20px,3vw,48px);align-items:start}
+.flow{display:flex;flex-direction:column;align-items:center}
+.fn{width:100%;padding:11px 16px;display:flex;align-items:center;gap:12px;opacity:.45;transition:.35s}
+.fn .ic{font-size:22px;color:var(--muted);transition:.35s}
+.fn b{font-size:17px;display:block}.fn small{color:var(--muted);font-size:12px}
+.fn.on{opacity:1;box-shadow:var(--glow-a)}.fn.on .ic{color:var(--a)}
+.fa{height:34px;display:flex;align-items:center;gap:10px;color:var(--dim);font-size:13px;opacity:.5;transition:.35s}
+.fa svg{font-size:20px}
+.fa.on{opacity:1;color:var(--warn)}
+.fa.on svg{animation:bob .7s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(5px)}}
+.codecol{display:grid;gap:14px;min-width:0}
+.code{overflow:hidden}
+.code header{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.code header i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.code pre{padding:14px 18px;font-size:clamp(13px,1.2vw,17px);line-height:1.6;overflow:auto;color:#d7dae6}
+.k{color:var(--b)}.f{color:var(--a)}.s{color:var(--warn)}.c{color:var(--dim)}
+.chips{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:clamp(12px,2vh,22px)}
+.chip{padding:10px 12px}
+.chip code{color:var(--a);font-size:clamp(11px,1vw,14px);display:block;white-space:nowrap}
+.chip small{color:var(--muted);font-size:12px}
+
+/* ---------- slide 3 ---------- */
+.s3{display:flex;flex-direction:column;gap:clamp(12px,2vh,22px)}
+.dia3{justify-content:flex-start}
+.tab .n{margin-left:auto;font-size:13px;padding:3px 9px;border-radius:99px;background:rgba(251,191,36,.12);color:var(--warn);font-weight:600}
+.state{margin-top:10px;padding:7px 10px;border-radius:9px;background:rgba(0,0,0,.35);font-size:13px;color:var(--muted)}
+.state b{display:inline;color:var(--warn);font-size:14px}
+.hconn{position:relative;width:90px;height:2px;flex:none;background:repeating-linear-gradient(90deg,var(--a) 0 6px,transparent 6px 13px);opacity:.75}
+.hconn .pk{top:-5px}
+.server{padding:16px;text-align:center;width:150px;flex:none}
+.server .ic{font-size:30px;color:var(--b);display:block;margin:0 auto 4px}
+.server small{color:var(--muted);font-size:13px}
+.primary{display:inline-flex;gap:12px;align-items:center;font-size:clamp(16px,1.8vw,26px);font-weight:700;padding:12px 20px;border-radius:14px;background:rgba(167,139,250,.08);box-shadow:var(--glow-b)}
+.primary svg{color:var(--b)}
+.others{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ---------- slide 4 ---------- */
+.tbl{display:grid;grid-template-columns:1.2fr 1fr 1fr;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.tbl>div{padding:clamp(9px,1.5vh,15px) 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;font-size:clamp(14px,1.4vw,20px)}
+.tbl>div:nth-last-child(-n+3){border-bottom:0}
+.tbl .h{flex-direction:column;align-items:flex-start;gap:6px;background:rgba(255,255,255,.02)}
+.tbl .h.sw{background:rgba(53,224,255,.06);box-shadow:inset 0 0 0 1px rgba(53,224,255,.35)}
+.tbl .h b{font-size:clamp(16px,1.6vw,23px)}
+.tbl .lbl{color:var(--muted)}
+.tbl .sw{background:rgba(53,224,255,.04)}
+.mini{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.mini span{padding:3px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg)}
+.mini .col{display:flex;flex-direction:column;gap:4px;border:0;padding:0;background:none}
+.mini svg{width:34px;height:52px;stroke:var(--a);fill:none;stroke-width:1.5}
+.ck,.xx{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:16px}
+.ck{background:rgba(52,211,153,.15);color:var(--ok)}
+.xx{background:rgba(255,255,255,.05);color:var(--dim)}
+.when{margin-top:clamp(12px,2vh,22px);display:flex;gap:16px;align-items:center;padding:16px 22px;border-radius:16px;background:rgba(53,224,255,.06);box-shadow:var(--glow-a);font-size:clamp(15px,1.6vw,22px)}
+.when>svg{font-size:30px;color:var(--a)}
+.when small{display:block;color:var(--a);letter-spacing:.14em;text-transform:uppercase;font-size:12px;margin-bottom:3px;font-weight:600}
+.when b{color:var(--a)}
+
+
+/* ---------- slide 4 extras ---------- */
+.s4{display:grid;grid-template-columns:1.5fr 1fr;gap:clamp(14px,2vw,28px);align-items:stretch}
+.s4 .tbl{align-self:start;grid-template-columns:1.1fr 1fr 1fr}
+.s4 .tbl>div{padding:clamp(7px,1.1vh,11px) 14px;font-size:clamp(13px,1.2vw,17px)}
+.s4 .tbl code{font-size:.8em}
+.anim{padding:0 0 10px;display:flex;flex-direction:column}
+.anim header{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);color:var(--muted);font-size:14px}
+.lane{padding:10px 14px;flex:1;display:flex;flex-direction:column;gap:6px}
+.lane+.lane{border-top:1px dashed var(--line)}
+.lt{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lane.sh .lt{color:var(--a)}
+.rows{display:flex;flex-direction:column;gap:6px}
+.rows.shared{flex-direction:row;align-items:center;gap:0}
+.tcol{display:flex;flex-direction:column;gap:6px;flex:1}
+.ar{display:flex;align-items:center;font-size:13px;opacity:0;transform:translateX(-12px);transition:.45s}
+.ar span{padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);flex:none;min-width:58px;text-align:center}
+.ar .ln{flex:1;height:2px;min-width:30px;background:repeating-linear-gradient(90deg,var(--a) 0 6px,transparent 6px 12px);opacity:.8;animation:dash 1s linear infinite}
+.ar .w{border-color:rgba(167,139,250,.6);color:var(--b);background:rgba(167,139,250,.1)}
+.w.big{border:1px solid var(--a);color:var(--a);background:rgba(53,224,255,.1);box-shadow:var(--glow-a);padding:16px 12px;border-radius:12px;font-size:14px;min-width:74px;text-align:center;transition:.3s}
+#anim[data-open="1"] .r1,#anim[data-open="2"] .r1,#anim[data-open="3"] .r1,
+#anim[data-open="2"] .r2,#anim[data-open="3"] .r2,#anim[data-open="3"] .r3{opacity:1;transform:none}
+#swBox.hit{transform:scale(1.1)}
+.cnt{font-size:13px;color:var(--muted)}
+.cnt b{font-size:15px}
+.rw{margin-top:clamp(10px,1.6vh,18px)}
+.rwh{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.rwg{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:10px}
+.rwc{padding:12px 14px;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.rwc b{font-size:clamp(15px,1.4vw,19px)}
+.rwc small{color:var(--muted);font-size:clamp(11px,1vw,13px);line-height:1.4}
+.rwc a{color:var(--b);font-size:12px;text-decoration:none}
+.rwc a:hover{text-decoration:underline}
+.rwc.ver{box-shadow:var(--glow-b)}
+@media (max-width:1100px){.s4,.rwg{grid-template-columns:1fr}}
+
+/* ---------- slide 5 ---------- */
+.s5{display:grid;grid-template-columns:auto minmax(280px,1fr);gap:clamp(18px,2.5vw,36px);align-items:stretch}
+.dia5 .tabs{gap:12px}
+.dia5 .tab{width:250px;flex-direction:column;align-items:stretch;gap:9px;padding:12px 14px;transition:.3s}
+.dia5 .tab.off{opacity:.55}
+.th{display:flex;align-items:center;gap:10px}
+.th b{font-size:17px}
+.th .st{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:#444a5c;transition:.3s}
+.dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.btns{display:flex;gap:8px}
+.btn{flex:1;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;font-size:13px;cursor:pointer;display:flex;gap:6px;align-items:center;justify-content:center;transition:.2s}
+.btn:hover:not(:disabled){border-color:var(--a)}
+.btn.go{border-color:rgba(53,224,255,.5);color:var(--a)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.last{font-size:12px;color:var(--dim);min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dia5 .worker{width:190px}
+.stat{display:flex;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.worker .dot{display:inline-block;margin-right:5px}
+.logbox{display:flex;flex-direction:column;min-height:0}
+.logbox header{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line);color:var(--muted);font-size:14px}
+.logbox header span:last-child{margin-left:auto}
+.log{flex:1;overflow:auto;padding:10px 14px;font-size:13px;line-height:1.5;display:flex;flex-direction:column;gap:5px;min-height:200px;max-height:340px}
+.log div{display:flex;gap:10px;padding:5px 9px;border-radius:8px;background:rgba(255,255,255,.025);animation:rise .35s both}
+.log time{color:var(--dim);flex:none}
+.log .sent{color:var(--a)}.log .recv{color:var(--b)}.log .conn{color:var(--ok)}.log .disc{color:var(--muted)}
+.log .empty{color:var(--dim);background:none}
+.legend{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line)}
+.s5foot{margin-top:clamp(12px,2vh,20px);text-align:center}
+
+@media (max-width:1100px){.s1,.s2,.s5{grid-template-columns:1fr}.chips{grid-template-columns:repeat(3,1fr)}.slide{justify-content:flex-start}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition-duration:.01ms!important;transition-delay:0s!important}
+  .reveal{opacity:1}
+}
+
+/* ---------- polish: palette, scrollbars, auto-fit ---------- */
+:root{
+  --bg:#080a11; --bg2:#0c0f18; --card:#10141f; --line:#1f2536;
+  --text:#eef1f8; --muted:#9aa3b8; --dim:#5f6880;
+  --a:#3ddcf7; --b:#9a8cf8; --ok:#3ddc97; --warn:#f6c453;
+  --glow-a:0 0 0 1px rgba(61,220,247,.45),0 0 26px rgba(61,220,247,.16);
+  --glow-b:0 0 0 1px rgba(154,140,248,.45),0 0 26px rgba(154,140,248,.16);
+}
+body{background:
+  radial-gradient(1100px 650px at 85% -15%,rgba(61,220,247,.07),transparent 60%),
+  radial-gradient(900px 600px at -10% 115%,rgba(154,140,248,.08),transparent 55%),
+  radial-gradient(rgba(255,255,255,.035) 1px,transparent 1px) 0 0/26px 26px,var(--bg)}
+.card{background:linear-gradient(180deg,#131827,var(--bg2));box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 8px 24px rgba(0,0,0,.25)}
+.worker.card,.when,.takeaway{box-shadow:var(--glow-a),inset 0 1px 0 rgba(255,255,255,.05)}
+.rwc.ver,.primary{box-shadow:var(--glow-b)}
+h1 em,.h1 em{background:linear-gradient(90deg,var(--a),var(--b) 90%);-webkit-background-clip:text;background-clip:text}
+.eyebrow{display:inline-flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:22px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--a),var(--b))}
+.takeaway{background:rgba(61,220,247,.06);animation:none}
+.badge.a{background:rgba(61,220,247,.07);border-color:rgba(61,220,247,.3)}
+.badge.b{background:rgba(154,140,248,.08);border-color:rgba(154,140,248,.3)}
+.tab .ic{background:rgba(154,140,248,.1)}
+.points .ic{background:rgba(61,220,247,.08);border:1px solid rgba(61,220,247,.18)}
+.pk{background:var(--warn);box-shadow:0 0 12px 2px rgba(246,196,83,.55)}
+.pk.v{background:var(--b);box-shadow:0 0 12px 2px rgba(154,140,248,.6)}
+
+/* scrollbars: slim + dark, never layout-shifting */
+*{scrollbar-width:thin;scrollbar-color:#2a3148 transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#2a3148;border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+.slide{justify-content:flex-start;scrollbar-gutter:stable both-edges;padding-bottom:12px}
+.slide .wrap{margin:auto;transform-origin:50% 0}
+.log,.code pre{overscroll-behavior:contain}
+.log{max-height:300px}
+
+/* slide 3 tab cards: keep badge on one line, give text room */
+.dia3 .tab{width:270px}
+.dia3 .tab small{display:block;white-space:nowrap}
+.tab .n{flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;line-height:1;font-variant-numeric:tabular-nums;min-width:48px;justify-content:center}
+.tab .n span{display:inline}
+
+/* slide 4 slimmer */
+.s4 h1,#s4 .h1{font-size:clamp(26px,3.2vw,44px)}
+.rwg{grid-template-columns:1fr 1fr}
+.lane{padding:8px 14px}
+.when{padding:12px 18px;font-size:clamp(14px,1.4vw,19px)}
+@media (max-width:1100px){.s4,.rwg{grid-template-columns:1fr}.anim{order:2}}
+.slide{overflow-x:hidden}
+
+/* ---------- slide 6 ---------- */
+.s6{display:grid;grid-template-columns:1fr 1fr;gap:clamp(14px,2vw,28px)}
+.cmp{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.cmp.good{box-shadow:var(--glow-a),inset 0 1px 0 rgba(255,255,255,.05)}
+.cmph{display:flex;align-items:center;gap:12px}
+.cmph small{color:var(--muted);font-size:14px}
+.dia6{justify-content:space-between}
+.dia6 .tab{width:150px;padding:10px 12px;gap:8px;justify-content:space-between}
+.dia6 .tab b{font-size:15px}
+.dia6 .fanwrap{width:auto;flex:1;min-width:60px}
+.dia6 .worker{width:110px;padding:14px 8px}
+.dia6 .worker .ic{font-size:26px}
+.dia6 .worker b{font-size:16px}
+.rx{font-size:12px;font-weight:600;white-space:nowrap;opacity:0;transition:.3s}
+.rx.show{opacity:1}
+.rx.echo{color:var(--warn)}.rx.got{color:var(--b)}.rx.skip{color:var(--a)}
+.tab.echo{box-shadow:0 0 0 1px rgba(246,196,83,.7),0 0 22px rgba(246,196,83,.25)}
+.mini6{font-size:clamp(12px,1.1vw,15px);line-height:1.6;padding:10px 14px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid var(--line);color:#d7dae6;overflow:auto}
+.takeaway code{color:var(--a);font-size:.9em}
+@media (max-width:1100px){.s6{grid-template-columns:1fr}}
+.sync{position:fixed;top:14px;right:24px;z-index:6}
+.sync{cursor:pointer;font:inherit;font-size:13px;color:var(--a)}
+.sync.off{color:var(--muted);border-color:var(--line)}
+.sync.off:hover{border-color:var(--a);color:var(--a)}
+.sync b{color:var(--text)}
+.sync .dot{margin-right:2px}
+.sync[hidden]{display:none}
+
+
+
+/* slide 6 live ports */
+.lform{display:flex;gap:8px}
+.lform input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--text);padding:8px 10px;font:inherit;font-size:14px}
+.lform input:focus{outline:none;border-color:var(--a)}
+.lform .btn{flex:none;padding:7px 14px}
+.s6{grid-template-columns:1fr 1fr 1.1fr}
+.live{order:3}
+.live .mine{font-size:15px;color:var(--muted)}
+.live .mine b{color:var(--a);font-family:"JetBrains Mono","Cascadia Code",Consolas,monospace}
+.plist{display:flex;flex-direction:column;gap:6px;min-height:64px}
+.prow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:14px}
+.prow b{min-width:48px}
+.prow .nm{font-family:"JetBrains Mono","Cascadia Code",Consolas,monospace;flex:1}
+.prow .you{font-size:11px;color:var(--a);border:1px solid rgba(61,220,247,.4);border-radius:99px;padding:1px 8px}
+.prow .got{font-size:12px;color:var(--muted)}
+.prow.me{border-color:rgba(61,220,247,.5);box-shadow:0 0 0 1px rgba(61,220,247,.15)}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer}
+.chk code{color:var(--a);font-size:12px}
+.llog{display:flex;flex-direction:column;gap:5px;max-height:130px;overflow:auto;font-size:12.5px}
+.llog div{padding:5px 9px;border-radius:8px;background:rgba(255,255,255,.04);animation:rise .3s both}
+.llog .sent{color:var(--a)}.llog .echo{color:var(--warn)}.llog .recv{color:var(--b)}
+@media (max-width:1100px){.s6{grid-template-columns:1fr}}
+
+/* ---------- final polish ---------- */
+:root{--r:18px;--ease:cubic-bezier(.2,.7,.2,1)}
+html{scroll-behavior:smooth}
+body{font-feature-settings:"cv11","ss01";text-rendering:optimizeLegibility}
+::selection{background:rgba(61,220,247,.28)}
+:focus-visible{outline:2px solid var(--a);outline-offset:3px;border-radius:8px}
+
+/* cards: gradient hairline border + gentle lift */
+.card{position:relative;border-radius:var(--r);border:1px solid transparent;
+  background:linear-gradient(180deg,#141a2a,#0d111b) padding-box,
+             linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 40%,rgba(61,220,247,.12)) border-box;
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.chip.card:hover,.rwc:hover,.points li:hover .ic{transform:translateY(-2px)}
+.rwc,.chip.card{transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.rwc:hover{box-shadow:0 12px 30px rgba(0,0,0,.35),var(--glow-b)}
+.chip.card:hover{box-shadow:0 10px 24px rgba(0,0,0,.35),var(--glow-a)}
+.points .ic{transition:transform .3s var(--ease)}
+
+/* headings + accents */
+h1,.h1{letter-spacing:-.03em;text-wrap:balance}
+.eyebrow{font-size:clamp(11px,1vw,14px)}
+.worker.card{background:linear-gradient(180deg,#12202f,#0c1522) padding-box,linear-gradient(160deg,rgba(61,220,247,.8),rgba(154,140,248,.35)) border-box}
+.takeaway,.when,.primary{backdrop-filter:blur(6px)}
+.takeaway{border:1px solid rgba(61,220,247,.35)}
+
+/* big ghost slide number behind content */
+.slide::before{content:attr(data-n);position:absolute;right:clamp(16px,4vw,60px);top:34px;font-size:clamp(120px,18vw,260px);font-weight:800;line-height:1;letter-spacing:-.06em;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.045);pointer-events:none;user-select:none}
+
+/* nav bar */
+.nav button{border-radius:50%;background:rgba(255,255,255,.04);backdrop-filter:blur(8px)}
+.nav button:hover:not(:disabled){transform:scale(1.08)}
+.hint{position:fixed;left:28px;bottom:24px;font-size:12px;color:var(--dim);z-index:5;display:flex;gap:10px;align-items:center}
+.hint kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;color:var(--muted);background:var(--bg2)}
+.brand{backdrop-filter:blur(6px)}
+@media (max-width:760px){.hint{display:none}.brand{font-size:11px}.sync{font-size:12px}}
+@media print{.nav,.hint,.brand,.sync,.progress,.count{display:none}.slide{position:static;opacity:1;visibility:visible;transform:none;page-break-after:always;height:100vh}html,body{overflow:visible;height:auto}.deck{position:static}}
+
+/* slide 6: columns may shrink; code wraps */
+.s6{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mini6{white-space:pre-wrap;word-break:break-word}
+.dia6{min-width:0}
+.dia6 .tab{width:132px}
+@media (max-width:1100px){.s6{grid-template-columns:1fr}}
+
+/* slide 4: real-world examples */
+.rwcard{padding:16px 20px}
+.rwcard .rwh{margin-bottom:10px}
+.rwl{list-style:none;display:grid;gap:8px}
+.rwl li{display:flex;align-items:center;gap:12px;font-size:clamp(14px,1.35vw,19px);padding:7px 10px;border-radius:12px;background:rgba(255,255,255,.03);transition:transform .3s var(--ease),background .3s}
+.rwl li:hover{transform:translateX(4px);background:rgba(61,220,247,.07)}
+.rwl .em{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(61,220,247,.08);border:1px solid rgba(61,220,247,.18);font-size:18px;flex:none}
+.rwl b{color:var(--a);font-weight:650}
+</style>
+</head>
+<body>
+<noscript><p style="padding:24px;font-family:sans-serif;color:#eee;background:#080a11">This is an interactive slide deck about the SharedWorker Web API. Enable JavaScript to view the animations and live demo. A SharedWorker is one background script shared by many browser tabs of the same origin; tabs talk to it through MessagePort.</p></noscript>
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.7 0 4.5 1.8 4.5 5"/></symbol>
+  <symbol id="i-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M6.5 6.5h.01M9.5 6.5h.01"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><rect x="7" y="3" width="14" height="12" rx="2"/><path d="M4 8v10a2 2 0 0 0 2 2h11"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"/><path d="M3.5 7 12 12l8.5-5M12 12v9.5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/><path d="M9 21l3-3 3 3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v16M5 13l7 7 7-7"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
+  <symbol id="i-unlink" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4M3 3l18 18"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-logs" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+</svg>
+
+<div class="progress" id="progress"></div>
+<div class="brand"><svg class="i"><use href="#i-share"/></svg><span><b>SharedWorker</b> · Web API</span></div>
+
+<main class="deck" id="deck" aria-label="SharedWorker slide deck">
+
+<!-- ================= SLIDE 1 ================= -->
+<section class="slide" id="s1" data-n="01">
+ <div class="wrap">
+  <div class="eyebrow reveal" style="--i:0">01 · Overview</div>
+  <h1 class="reveal" style="--i:1">What is a <em>SharedWorker</em>?</h1>
+  <div class="s1">
+   <div>
+    <ul class="points">
+     <li class="reveal" style="--i:2"><span class="ic"><svg class="i"><use href="#i-cpu"/></svg></span><span>Runs JavaScript in a <b>background context</b></span></li>
+     <li class="reveal" style="--i:3"><span class="ic"><svg class="i"><use href="#i-users"/></svg></span><span>Shared by <b>multiple browsing contexts</b></span></li>
+     <li class="reveal" style="--i:4"><span class="ic"><svg class="i"><use href="#i-layers"/></svg></span><span>Tabs &amp; windows talk to the <b>same worker</b></span></li>
+     <li class="reveal" style="--i:5"><span class="ic"><svg class="i"><use href="#i-plug"/></svg></span><span>Communication via <b>MessagePort</b></span></li>
+     <li class="reveal" style="--i:6"><span class="ic"><svg class="i"><use href="#i-box"/></svg></span><span>Has its <b>own execution context</b></span></li>
+     <li class="reveal" style="--i:7"><span class="ic"><svg class="i"><use href="#i-share"/></svg></span><span>Coordinate <b>shared state</b> &amp; background work</span></li>
+    </ul>
+    <div class="reveal" style="--i:8;margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge b">Same origin only</span><span class="badge b">Same browser profile</span><span class="badge" style="color:var(--warn);border-color:rgba(246,196,83,.4)">✕ Not across browsers or devices</span><span class="badge">new SharedWorker(url)</span>
+    </div>
+   </div>
+   <div>
+    <div class="dia reveal" style="--i:4" id="dia1">
+     <div class="tabs">
+      <div class="tab card"><span class="ic"><svg class="i"><use href="#i-window"/></svg></span><div><b>Tab A</b><small>page</small></div></div>
+      <div class="tab card"><span class="ic"><svg class="i"><use href="#i-window"/></svg></span><div><b>Tab B</b><small>page</small></div></div>
+      <div class="tab card"><span class="ic"><svg class="i"><use href="#i-window"/></svg></span><div><b>Tab C</b><small>iframe / window</small></div></div>
+     </div>
+     <div class="fanwrap"><svg></svg></div>
+     <div class="worker card"><svg class="i ic"><use href="#i-cpu"/></svg><b>SharedWorker</b><small>one instance</small></div>
+    </div>
+    <div class="reveal" style="--i:8;margin-top:12px;font-size:13px;color:var(--muted)"><span style="color:var(--warn)">●</span> amber ring = the sender also gets its own message back <span style="color:var(--dim)">(filter it → slide 6)</span></div>
+    <div class="reveal" style="--i:9;margin-top:14px"><span class="takeaway"><svg class="i"><use href="#i-spark"/></svg>One worker → multiple browser contexts</span></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- ================= SLIDE 2 ================= -->
+<section class="slide" id="s2" data-n="02">
+ <div class="wrap">
+  <div class="eyebrow reveal" style="--i:0">02 · Communication</div>
+  <h2 class="h1 reveal" style="--i:1">Everything flows through <em>ports</em></h2>
+  <div class="s2">
+   <div class="flow reveal" style="--i:2" id="flow">
+    <div class="fn card"><svg class="i ic"><use href="#i-window"/></svg><div><b>Browser Tab</b><small>Tab A</small></div></div>
+    <div class="fa"><svg class="i"><use href="#i-down"/></svg>postMessage()</div>
+    <div class="fn card"><svg class="i ic"><use href="#i-plug"/></svg><div><b>MessagePort</b><small>worker.port</small></div></div>
+    <div class="fa"><svg class="i"><use href="#i-down"/></svg>message event</div>
+    <div class="fn card"><svg class="i ic"><use href="#i-cpu"/></svg><div><b>SharedWorker</b><small>onconnect · e.ports[0]</small></div></div>
+    <div class="fa"><svg class="i"><use href="#i-down"/></svg>postMessage()</div>
+    <div class="fn card"><svg class="i ic"><use href="#i-plug"/></svg><div><b>MessagePort</b><small>port to Tab B</small></div></div>
+    <div class="fa"><svg class="i"><use href="#i-down"/></svg>message event</div>
+    <div class="fn card"><svg class="i ic"><use href="#i-window"/></svg><div><b>Another Tab</b><small>Tab B</small></div></div>
+   </div>
+   <div class="codecol">
+    <div class="code card reveal" style="--i:3"><header><i></i><i></i><i></i>main.js — each tab</header>
+<pre><span class="k">const</span> worker = <span class="k">new</span> <span class="f">SharedWorker</span>(<span class="s">"worker.js"</span>);
+worker.port.<span class="f">start</span>();                  <span class="c">// needed with addEventListener</span>
+worker.port.<span class="f">postMessage</span>(<span class="s">"hello"</span>);
+worker.port.<span class="f">onmessage</span> = (e) =&gt; <span class="f">log</span>(e.data);</pre></div>
+    <div class="code card reveal" style="--i:4"><header><i></i><i></i><i></i>worker.js — the shared worker</header>
+<pre><span class="k">const</span> ports = [];
+<span class="f">onconnect</span> = (e) =&gt; {                    <span class="c">// fires once per tab</span>
+  <span class="k">const</span> port = e.ports[<span class="s">0</span>];
+  ports.<span class="f">push</span>(port);
+  port.<span class="f">onmessage</span> = (ev) =&gt; ports.<span class="f">forEach</span>(p =&gt; p.<span class="f">postMessage</span>(ev.data));
+};</pre></div>
+   </div>
+  </div>
+  <div class="chips reveal" style="--i:6">
+   <div class="chip card"><code>SharedWorker</code><small>constructor(url)</small></div>
+   <div class="chip card"><code>port</code><small>MessagePort to worker</small></div>
+   <div class="chip card"><code>port.start()</code><small>begin receiving</small></div>
+   <div class="chip card"><code>postMessage()</code><small>send data</small></div>
+   <div class="chip card"><code>onmessage</code><small>receive data</small></div>
+   <div class="chip card"><code>connect</code><small>new tab attached</small></div>
+  </div>
+ </div>
+</section>
+
+<!-- ================= SLIDE 3 ================= -->
+<section class="slide" id="s3" data-n="03">
+ <div class="wrap s3">
+  <div>
+   <div class="eyebrow reveal" style="--i:0">03 · Real-time example</div>
+   <h2 class="h1 reveal" style="--i:1;margin:0">Shared state <em>across tabs</em></h2>
+  </div>
+  <div class="dia dia3 reveal" style="--i:2" id="dia3">
+   <div class="tabs">
+    <div class="tab card"><span class="ic"><svg class="i"><use href="#i-window"/></svg></span><div><b>Tab 1</b><small>Opens dashboard</small></div><span class="n">🔔 <span>0</span></span></div>
+    <div class="tab card"><span class="ic"><svg class="i"><use href="#i-window"/></svg></span><div><b>Tab 2</b><small>Another dashboard tab</small></div><span class="n">🔔 <span>0</span></span></div>
+    <div class="tab card"><span class="ic"><svg class="i"><use href="#i-bell"/></svg></span><div><b>Tab 3</b><small>Opens notifications</small></div><span class="n">🔔 <span>0</span></span></div>
+   </div>
+   <div class="fanwrap"><svg></svg></div>
+   <div class="worker card">
+     <svg class="i ic"><use href="#i-cpu"/></svg><b>SharedWorker</b><small>owns the connection</small>
+     <div class="state mono"><svg class="i" style="vertical-align:-2px"><use href="#i-db"/></svg> unread = <b id="unread">0</b></div>
+   </div>
+   <div class="hconn" id="hconn"></div>
+   <div class="server card"><svg class="i ic"><use href="#i-cloud"/></svg><b>Server</b><br><small>WebSocket</small></div>
+  </div>
+  <div class="reveal" style="--i:4"><span class="primary"><svg class="i"><use href="#i-link"/></svg>One WebSocket connection → multiple tabs</span></div>
+  <div class="others reveal" style="--i:5">
+   <span class="badge a">Cross-tab notifications</span>
+   <span class="badge">Live counters</span>
+   <span class="badge">Session coordination</span>
+   <span class="badge">Shared background tasks</span>
+   <span class="badge">State synchronization</span>
+  </div>
+  <div class="others reveal" style="--i:6;align-items:center">
+   <span style="color:var(--dim);font-size:13px">Typical apps for this pattern:</span>
+   <span class="badge">Chat inboxes</span><span class="badge">Live sports scores</span><span class="badge">Trading dashboards</span><span class="badge">Email / notification centers</span>
+  </div>
+ </div>
+</section>
+
+<!-- ================= SLIDE 4 ================= -->
+<section class="slide" id="s4" data-n="04">
+ <div class="wrap">
+  <div class="eyebrow reveal" style="--i:0">04 · Comparison</div>
+  <h2 class="h1 reveal" style="--i:1;margin-bottom:14px">SharedWorker <em>vs</em> Dedicated Worker</h2>
+  <div class="s4">
+   <div class="tbl reveal" style="--i:2">
+   <div class="h"></div>
+   <div class="h"><b>Dedicated Worker</b>
+     <div class="mini"><span>Tab</span>→<span>Worker</span></div></div>
+   <div class="h sw"><b style="color:var(--a)">SharedWorker</b>
+     <div class="mini"><div class="col"><span>Tab A</span><span>Tab B</span><span>Tab C</span></div>
+       <svg viewBox="0 0 34 52"><path d="M0 8C17 8 17 26 34 26M0 26H34M0 44C17 44 17 26 34 26"/></svg><span>Worker</span></div></div>
+
+   <div class="lbl">One browser context</div><div><span class="ck">✓</span></div><div class="sw"><span class="ck">✓</span></div>
+   <div class="lbl">Multiple tabs</div><div><span class="xx">✕</span></div><div class="sw"><span class="ck">✓</span></div>
+   <div class="lbl">Communication</div><div><code>worker.postMessage()</code></div><div class="sw"><code style="color:var(--a)">worker.port.postMessage()</code></div>
+   <div class="lbl">Best for</div><div>Isolated background work</div><div class="sw"><b>Shared background work</b></div>
+  </div>
+   <div class="card reveal rwcard" style="--i:3">
+    <div class="rwh"><svg class="i"><use href="#i-bolt"/></svg>Real-world examples</div>
+    <ul class="rwl">
+     <li><span class="em">🔌</span><span>One <b>WebSocket</b> connection shared across tabs</span></li>
+     <li><span class="em">🔔</span><span>Real-time <b>notifications</b> sent to all tabs</span></li>
+     <li><span class="em">🔄</span><span><b>Synchronize state</b> between tabs</span></li>
+     <li><span class="em">🛒</span><span>Keep <b>cart / session</b> information synchronized</span></li>
+     <li><span class="em">🌐</span><span>Coordinate <b>API polling</b> &amp; background tasks</span></li>
+     <li><span class="em">💾</span><span>Share <b>cached / background</b> data</span></li>
+    </ul>
+   </div>
+  </div>
+  <div class="when reveal" style="--i:4">
+   <svg class="i"><use href="#i-help"/></svg>
+   <div><small>When should I use it?</small>Use SharedWorker when <b>multiple browser contexts</b> need to communicate with the <b>same background worker</b>.</div>
+  </div>
+ </div>
+</section>
+
+<!-- ================= SLIDE 5 ================= -->
+<section class="slide" id="s5" data-n="05">
+ <div class="wrap">
+  <div class="eyebrow reveal" style="--i:0">05 · Live demo</div>
+  <h2 class="h1 reveal" style="--i:1;margin-bottom:14px">Try it: <em>3 tabs, 1 worker</em></h2>
+  <div class="s5">
+   <div class="dia dia5 reveal" style="--i:2" id="dia5">
+    <div class="tabs" id="simtabs"></div>
+    <div class="fanwrap"><svg></svg></div>
+    <div class="worker card">
+      <svg class="i ic"><use href="#i-cpu"/></svg><b>SharedWorker</b>
+      <small id="mode">starting…</small>
+      <div class="stat">
+        <span class="badge"><span class="dot" id="wdot"></span><span id="wstate">Idle</span></span>
+        <span class="badge a"><span id="clients">0</span> connected</span>
+      </div>
+    </div>
+   </div>
+   <div class="logbox card reveal" style="--i:3">
+    <header><svg class="i"><use href="#i-logs"/></svg>Shared event log<span id="logn" class="mono">0 events</span></header>
+    <div class="log" id="log"><div class="empty">Connect a tab, then send a message…</div></div>
+    <div class="legend">
+      <span class="badge"><span class="dot on"></span>Connected</span>
+      <span class="badge"><span class="dot"></span>Disconnected</span>
+      <span class="badge a">↑ Sent</span><span class="badge b">↓ Received</span>
+    </div>
+   </div>
+  </div>
+  <div class="s5foot reveal" style="--i:5"><span class="takeaway"><svg class="i"><use href="#i-spark"/></svg>SharedWorker enables multiple browser contexts to communicate through one shared worker.</span></div>
+ </div>
+</section>
+<!-- ================= SLIDE 6 ================= -->
+<section class="slide" id="s6" data-n="06">
+ <div class="wrap">
+  <div class="eyebrow reveal" style="--i:0">06 · Gotcha</div>
+  <h2 class="h1 reveal" style="--i:1;margin-bottom:14px">Broadcast: <em>echo</em> vs <em>filtered</em></h2>
+  <div class="s6">
+   <div class="card cmp reveal" style="--i:2">
+    <div class="cmph"><span class="badge" style="color:var(--warn);border-color:rgba(246,196,83,.4)">✕ No filter</span><small>sender gets its own message back</small></div>
+    <div class="dia dia6" id="dia6a">
+     <div class="tabs">
+      <div class="tab card"><div><b>Tab 1</b><small>sender</small></div><span class="rx"></span></div>
+      <div class="tab card"><div><b>Tab 2</b><small>receiver</small></div><span class="rx"></span></div>
+      <div class="tab card"><div><b>Tab 3</b><small>receiver</small></div><span class="rx"></span></div>
+     </div>
+     <div class="fanwrap"><svg></svg></div>
+     <div class="worker card"><svg class="i ic"><use href="#i-cpu"/></svg><b>Worker</b></div>
+    </div>
+<pre class="mini6"><span class="c">// every port, sender included</span>
+ports.<span class="f">forEach</span>(p =&gt; p.<span class="f">postMessage</span>(data));</pre>
+   </div>
+   <div class="card cmp live reveal" style="--i:2" id="live">
+    <div class="cmph"><span class="badge a">● Live ports</span><small>open this page in 3 tabs</small></div>
+    <div class="mine"><b id="cnt">0</b> <span id="cntu">tabs connected</span> · you are <b id="myport">not joined</b></div>
+    <div class="plist" id="plist"><div class="none">Connecting to the SharedWorker…</div></div>
+    <label class="chk"><input type="checkbox" id="skip" checked> skip the sender <code>p !== port</code></label>
+    <div class="llog" id="llog"></div>
+    <form class="lform" id="lform"><input id="ltext" maxlength="80" autocomplete="off" placeholder="Type a message…" value="hello"><button class="btn go" id="lsend" type="submit" disabled><svg class="i"><use href="#i-send"/></svg>Send</button></form>
+   </div>
+   <div class="card cmp good reveal" style="--i:3">
+    <div class="cmph"><span class="badge a">✓ Filtered</span><small>everyone except the sender</small></div>
+    <div class="dia dia6" id="dia6b">
+     <div class="tabs">
+      <div class="tab card"><div><b>Tab 1</b><small>sender</small></div><span class="rx"></span></div>
+      <div class="tab card"><div><b>Tab 2</b><small>receiver</small></div><span class="rx"></span></div>
+      <div class="tab card"><div><b>Tab 3</b><small>receiver</small></div><span class="rx"></span></div>
+     </div>
+     <div class="fanwrap"><svg></svg></div>
+     <div class="worker card"><svg class="i ic"><use href="#i-cpu"/></svg><b>Worker</b></div>
+    </div>
+<pre class="mini6"><span class="c">// skip the port that sent it</span>
+ports.<span class="f">forEach</span>(p =&gt; { <span class="k">if</span> (p !== port) p.<span class="f">postMessage</span>(data); });</pre>
+   </div>
+  </div>
+  <div class="reveal" style="--i:5;margin-top:16px"><span class="takeaway"><svg class="i"><use href="#i-spark"/></svg>The browser never filters — <code>p !== port</code> is your job</span></div>
+ </div>
+</section>
+
+</main>
+
+<nav class="nav">
+  <button id="prev" aria-label="Previous slide">←</button>
+  <div class="dots" id="dots"></div>
+  <button id="next" aria-label="Next slide">→</button>
+</nav>
+<button class="sync badge off" id="sync" type="button"><span class="dot"></span><span id="synct">Join SharedWorker</span></button>
+<div class="hint"><kbd>←</kbd><kbd>→</kbd> navigate <kbd>F</kbd> fullscreen</div>
+<div class="count mono" id="count"></div>
+
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- deck navigation ---------- */
+const slides = $$('.slide');
+let cur = -1;
+const dots = $('#dots');
+slides.forEach((_, i) => { const d = document.createElement('i'); d.onclick = () => go(i); dots.append(d); });
+function go(n, remote) {
+  n = Math.max(0, Math.min(slides.length - 1, n));
+  if (n === cur) return;
+  cur = n;
+  slides.forEach((s, i) => { s.classList.toggle('active', i === n); s.classList.toggle('before', i < n); });
+  $$('i', dots).forEach((d, i) => d.classList.toggle('on', i === n));
+  $('#progress').style.width = ((n + 1) / slides.length * 100) + '%';
+  $('#count').textContent = (n + 1) + ' / ' + slides.length;
+  $('#prev').disabled = n === 0; $('#next').disabled = n === slides.length - 1;
+  history.replaceState(null, '', '#' + (n + 1));
+  if (!remote && syncPort) syncPort.postMessage({ type: 'slide', n });
+}
+$('#prev').onclick = () => go(cur - 1);
+$('#next').onclick = () => go(cur + 1);
+addEventListener('keydown', e => {
+  if (e.target.matches('input,textarea') || (e.target.closest('button') && e.key === ' ')) return;   // let buttons keep Space
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(cur + 1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(slides.length - 1);
+  else if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+});
+
+let tx = null;
+addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+addEventListener('touchend', e => { if (tx == null) return; const d = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(d) > 60) go(cur + (d < 0 ? 1 : -1)); }, { passive: true });
+
+/* ---------- fan diagrams (tabs → worker) ---------- */
+function initFan(dia) {
+  const wrap = $('.fanwrap', dia), svg = $('svg', wrap);
+  const W = wrap.offsetWidth, H = wrap.offsetHeight;
+  const wy = $('.worker', dia).offsetTop + $('.worker', dia).offsetHeight / 2 - wrap.offsetTop;
+  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  const old = $$('path', svg).map(p => p.classList.contains('off'));
+  svg.innerHTML = '';
+  wrap._d = $$('.tab', dia).map((t, i) => {
+    const y = t.offsetTop + t.offsetHeight / 2 - wrap.offsetTop;
+    const d = `M0 ${y} C ${W / 2} ${y}, ${W / 2} ${wy}, ${W} ${wy}`;
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d); if (old[i]) p.classList.add('off');
+    svg.append(p); return d;
+  });
+  wrap._svg = svg;
+}
+const dias = $$('.dia').filter(d => $('.fanwrap', d));
+const initAll = () => dias.forEach(d => { if (d._ready !== false) initFan(d); });
+
+// packet along a fan line; up = tab → worker, otherwise worker → tab
+function fly(dia, i, up, cls = '', ms = 650) {
+  return new Promise(res => {
+    const wrap = $('.fanwrap', dia);
+    if (RM || !wrap._d) return res();
+    const el = document.createElement('i');
+    el.className = 'pk ' + cls; el.style.offsetPath = `path('${wrap._d[i]}')`;
+    wrap.append(el);
+    el.animate({ offsetDistance: up ? ['0%', '100%'] : ['100%', '0%'] }, { duration: ms, easing: 'ease-in-out' })
+      .onfinish = () => { el.remove(); res(); };
+  });
+}
+const pulse = (el, cls, ms = 350) => { el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); };
+
+/* ---------- slide 1 loop ---------- */
+(async () => {
+  const dia = $('#dia1'), tabs = $$('.tab', dia), w = $('.worker', dia);
+  for (let n = 0; ; n++) {
+    await sleep(2200);
+    if (cur !== 0) continue;
+    const i = n % 3;
+    pulse(tabs[i], 'flash');
+    await fly(dia, i, true);
+    pulse(w, 'ping');
+    await Promise.all([0, 1, 2].map(j => fly(dia, j, false, j === i ? '' : 'v').then(() => pulse(tabs[j], j === i ? 'echo' : 'flash', 600))));
+  }
+})();
+
+/* ---------- slide 2 flow ---------- */
+(async () => {
+  const els = $$('#flow > *');
+  for (;;) {
+    for (let s = 0; s <= els.length; s++) {
+      if (cur === 1) els.forEach((e, i) => e.classList.toggle('on', s > 0 && i < s));
+      await sleep(s === els.length ? 1800 : 520);
+    }
+  }
+})();
+
+/* ---------- slide 3 loop ---------- */
+(async () => {
+  const dia = $('#dia3'), tabs = $$('.tab', dia), w = $('.worker', dia), dot = $('#hconn');
+  let n = 0;
+  for (;;) {
+    await sleep(2600);
+    if (cur !== 2) continue;
+    if (!RM) {
+      const el = document.createElement('i'); el.className = 'pk'; dot.append(el);
+      await el.animate([{ transform: 'translateX(78px)' }, { transform: 'translateX(0)' }], { duration: 600, easing: 'ease-in' }).finished;
+      el.remove();
+    }
+    $('#unread').textContent = ++n; pulse(w, 'ping');
+    await Promise.all(tabs.map((t, i) => fly(dia, i, false, '', 700).then(() => {
+      $('.n span', t).textContent = n; pulse(t, 'flash', 500);
+    })));
+  }
+})();
+
+/* ---------- slide 5: real SharedWorker, with in-page fallback ---------- */
+// the worker's code, as a string so it can run as a real SharedWorker or in the fallback
+const workerSrc = `
+const ports = new Set();
+const sendCount = () => ports.forEach(p => p.postMessage({ type: 'count', n: ports.size }));
+onconnect = (e) => {
+  const port = e.ports[0];
+  ports.add(port);
+  port.onmessage = (ev) => {
+    const m = ev.data;
+    if (m.type === 'bye') { ports.delete(port); sendCount(); return; }
+    ports.forEach(p => { if (p !== port) p.postMessage({ type: 'msg', from: m.from, text: m.text }); });
+  };
+  port.postMessage({ type: 'hello' });
+  sendCount();
+};`;
+
+let blobUrl = null, real = false;
+const modeEl = $('#mode');
+try {
+  blobUrl = URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' }));
+  const probe = new SharedWorker(blobUrl, { name: 'sw-demo' });
+  const fail = () => { real = false; modeEl.textContent = 'simulated fallback'; };
+  probe.onerror = fail;
+  probe.port.onmessage = e => {
+    if (e.data.type !== 'hello') return;
+    real = true; modeEl.textContent = 'real SharedWorker';
+    probe.port.postMessage({ type: 'bye' }); probe.port.close();
+  };
+  setTimeout(() => { if (!real) fail(); }, 1200);
+  modeEl.textContent = 'checking…';
+} catch (err) { modeEl.textContent = 'simulated fallback'; }
+
+// fallback: run the same worker code in-page; ports are real MessageChannel ports
+const scope = { onconnect: null };
+let fallbackReady = false;
+function openPort() {
+  if (real) {
+    try { return new SharedWorker(blobUrl, { name: 'sw-demo' }).port; } catch (e) { real = false; modeEl.textContent = 'simulated fallback'; }
+  }
+  if (!fallbackReady) { new Function('scope', 'with (scope) {' + workerSrc + '}')(scope); fallbackReady = true; }
+  const ch = new MessageChannel();
+  scope.onconnect({ ports: [ch.port2] });
+  return ch.port1;
+}
+
+const dia5 = $('#dia5'), simtabs = $('#simtabs'), logEl = $('#log');
+const texts = ['Hello 👋', 'Ping', 'Cart updated', 'User logged out', 'New notification'];
+let sentCount = 0, events = 0, workerCount = 0;
+const tabs5 = [0, 1, 2].map(i => {
+  const el = document.createElement('div');
+  el.className = 'tab card off';
+  el.innerHTML = `<div class="th"><svg class="i" style="font-size:20px;color:var(--b)"><use href="#i-window"/></svg><b>Tab ${i + 1}</b>
+    <span class="st"><span class="dot"></span><span class="lbl5">Disconnected</span></span></div>
+    <div class="btns"><button class="btn con"><svg class="i"><use href="#i-link"/></svg>Connect</button>
+    <button class="btn go" disabled><svg class="i"><use href="#i-send"/></svg>Send</button></div>
+    <div class="last">—</div>`;
+  simtabs.append(el);
+  const t = { el, port: null, dot: $('.dot', el), lbl: $('.lbl5', el), con: $('.con', el), go: $('.go', el), last: $('.last', el) };
+  t.con.onclick = () => t.port ? disconnect(i) : connect(i);
+  t.go.onclick = () => send(i);
+  return t;
+});
+
+function log(kind, html) {
+  if ($('.empty', logEl)) logEl.innerHTML = '';
+  const d = document.createElement('div');
+  const t = new Date().toLocaleTimeString([], { hour12: false });
+  d.innerHTML = `<time>${t}</time><span class="${kind}">${html}</span>`;
+  logEl.append(d); logEl.scrollTop = logEl.scrollHeight;
+  $('#logn').textContent = ++events + ' events';
+}
+function render() {
+  const live = tabs5.filter(t => t.port).length;
+  $('#clients').textContent = workerCount;
+  $('#wdot').classList.toggle('on', live > 0);
+  $('#wstate').textContent = live > 0 ? 'Running' : 'Idle';
+  tabs5.forEach((t, i) => {
+    const on = !!t.port;
+    t.el.classList.toggle('off', !on); t.dot.classList.toggle('on', on);
+    t.lbl.textContent = on ? 'Connected' : 'Disconnected';
+    t.con.innerHTML = `<svg class="i"><use href="#i-${on ? 'unlink' : 'link'}"/></svg>${on ? 'Disconnect' : 'Connect'}`;
+    t.go.disabled = !on || live < 1;
+    $$('path', $('.fanwrap', dia5)._svg)[i].classList.toggle('off', !on);
+  });
+}
+function connect(i) {
+  const t = tabs5[i];
+  t.port = openPort();
+  t.port.onmessage = async e => {
+    const m = e.data;
+    if (m.type === 'hello') { log('conn', `🟢 Tab ${i + 1} connected <span style="color:var(--dim)">(port opened)</span>`); fly(dia5, i, false, 'v', 400); }
+    else if (m.type === 'count') { workerCount = m.n; render(); }
+    else if (m.type === 'msg') {
+      await fly(dia5, i, false, 'v');
+      log('recv', `↓ Tab ${i + 1} received “${m.text}” <span style="color:var(--dim)">from Tab ${m.from}</span>`);
+      t.last.textContent = `↓ “${m.text}” from Tab ${m.from}`; pulse(t.el, 'flash', 500);
+    }
+  };
+  render();
+}
+function disconnect(i) {
+  const t = tabs5[i];
+  t.port.postMessage({ type: 'bye' }); t.port.close(); t.port = null;
+  log('disc', `⚪ Tab ${i + 1} disconnected`);
+  if (!tabs5.some(x => x.port)) workerCount = 0;
+  t.last.textContent = '—'; render();
+}
+async function send(i) {
+  const t = tabs5[i], text = texts[sentCount++ % texts.length];
+  log('sent', `↑ Tab ${i + 1} sent “${text}” <span style="color:var(--dim)">→ SharedWorker</span>`);
+  t.last.textContent = `↑ “${text}”`; pulse(t.el, 'flash', 500);
+  await fly(dia5, i, true);
+  pulse($('.worker', dia5), 'ping');
+  if (t.port) t.port.postMessage({ type: 'msg', from: i + 1, text });
+  if (tabs5.filter(x => x.port).length < 2) log('disc', 'Worker: no other tabs connected to receive it');
+}
+
+/* ---------- auto-fit: scale each slide's content to the viewport ---------- */
+function fit() {
+  slides.forEach(s => {
+    const w = $('.wrap', s);
+    w.style.cssText = '';
+    const cs = getComputedStyle(s);
+    const cw = s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ch = s.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const tw = Math.min(cw, 1280), h = w.offsetHeight;
+    const k = Math.max(.55, Math.min(1, ch / h));
+    if (k === 1) return;
+    // lay out at the larger natural width, then scale it back down from the top-left corner
+    w.style.width = (tw / k) + 'px'; w.style.maxWidth = 'none';
+    w.style.transformOrigin = '0 0'; w.style.transform = 'scale(' + k + ')';
+    const nh = w.offsetHeight * k;
+    w.style.margin = Math.max(0, (ch - nh) / 2) + 'px 0 ' + (-w.offsetHeight * (1 - k)) + 'px ' + (cw - tw) / 2 + 'px';
+  });
+  initAll();
+}
+
+/* ---------- slide 6: echo vs filtered ---------- */
+(async () => {
+  const run = async (dia, filtered) => {
+    const tabs = $$('.tab', dia), rx = tabs.map(t => $('.rx', t));
+    const say = (i, cls, txt) => { rx[i].className = 'rx show ' + cls; rx[i].textContent = txt; };
+    await fly(dia, 0, true);
+    pulse($('.worker', dia), 'ping');
+    const targets = filtered ? [1, 2] : [0, 1, 2];
+    await Promise.all(targets.map(i => fly(dia, i, false, i === 0 ? '' : 'v').then(() => {
+      if (i === 0) { say(0, 'echo', '↩ echo!'); tabs[0].classList.add('echo'); }
+      else { say(i, 'got', '↓ got it'); pulse(tabs[i], 'flash', 600); }
+    })));
+    if (filtered) say(0, 'skip', '✓ skipped');
+  };
+  const reset = () => $$('#dia6a .tab, #dia6b .tab').forEach(t => { t.classList.remove('echo'); $('.rx', t).className = 'rx'; });
+  for (;;) {
+    await sleep(900);
+    if (cur !== 5) continue;
+    reset();
+    await Promise.all([run($('#dia6a'), false), run($('#dia6b'), true)]);
+    await sleep(2600);
+  }
+})();
+
+/* ---------- join / leave the shared worker: slide sync + live tab count ---------- */
+const syncSrc = "// One instance shared by every tab that has the deck open (same origin + same name \"deck-sync\").\n// Its console: chrome://inspect/#workers (or brave://inspect/#workers) -> \"inspect\" next to deck-sync.\nconst tabs = new Map();               // MessagePort -> { name: \"Tab A\", port: \"port#1\", got: 0 }\nlet next = 1;\nlet slide = null;                     // shared state: the current slide\n\nconst names = () => [...tabs.values()].map(t => t.name + ' / ' + t.port);\nconst send = (type, extra) => tabs.forEach((_, p) => p.postMessage({ type, ...extra }));\nconst update = () => { send('count', { n: tabs.size }); send('tabs', { list: [...tabs.values()] }); };\n\nonconnect = (e) => {                  // fires once per tab\n  const port = e.ports[0];\n  const me = { name: 'Tab ' + String.fromCharCode(64 + next), port: 'port#' + next, got: 0 };\n  next++;\n  tabs.set(port, me);\n  console.log('[worker] connect:', me.name, me.port, '| all ports:', names());\n\n  port.onmessage = (ev) => {\n    const m = ev.data;\n    if (m.type === 'bye') {                                   // a tab can't be detected closing, so it says goodbye\n      tabs.delete(port); update();\n      console.log('[worker] left:', me.name, '| all ports:', names());\n      return;\n    }\n    if (m.type === 'slide') slide = m.n;\n    console.log('[worker] message', m, 'from', me.name, me.port, '| all ports:', names());   // log before sending\n    tabs.forEach((t, p) => {\n      if (m.type === 'slide' && p === port) return;           // slide sync: never echo to the sender\n      if (m.type === 'msg' && m.skip && p === port) { console.log('   skipped', t.name, '(sender)'); return; }\n      if (m.type === 'msg') { t.got++; p.postMessage({ type: 'msg', from: me.name, text: m.text, echo: p === port }); }\n      else p.postMessage(m);\n      console.log('   sent to', t.name, t.port);\n    });\n    if (m.type === 'msg') update();\n  };\n  port.postMessage({ type: 'hello', slide, name: me.name, port: me.port });   // newcomers learn the current slide\n  update();\n};\n";
+const syncEl = $('#sync');
+let syncPort = null, syncSw = null;
+const paint = n => {                      // n = number of joined tabs, or null when not joined
+  syncEl.classList.toggle('off', n == null);
+  $('.dot', syncEl).classList.toggle('on', n != null);
+  $('#synct').innerHTML = n == null ? 'Join SharedWorker' : '<b>' + n + '</b> ' + (n === 1 ? 'tab' : 'tabs') + ' joined · click to leave';
+};
+let me = null;   // { name, port } of this tab
+function renderPorts(list) {
+  $('#myport').textContent = me ? me.name + ' · ' + me.port : 'not joined';
+  $('#cnt').textContent = list.length;
+  $('#cntu').textContent = list.length === 1 ? 'tab connected' : 'tabs connected';
+  $('#lsend').disabled = !me;
+  const box = $('#plist'); box.innerHTML = '';
+  list.forEach(t => {
+    const row = document.createElement('div'); row.className = 'prow' + (me && t.port === me.port ? ' me' : '');
+    row.innerHTML = '<span class="dot on"></span><b>' + t.name + '</b><span class="nm">' + t.port + '</span>' + (me && t.port === me.port ? '<span class="you">you</span>' : '') + '<span class="got">got ' + t.got + '</span>';
+    box.append(row);
+  });
+  if (!list.length) box.innerHTML = '<div class="none">Connecting to the SharedWorker…</div>';
+}
+function logLive(cls, text) {
+  const d = document.createElement('div'); d.className = cls; d.textContent = text;
+  const l = $('#llog'); l.append(d); l.scrollTop = l.scrollHeight;
+}
+$('#lform').onsubmit = e => {
+  e.preventDefault();
+  const text = $('#ltext').value.trim(); if (!text || !syncPort) return;
+  syncPort.postMessage({ type: 'msg', skip: $('#skip').checked, text });
+  logLive('sent', '↑ you sent — “' + text + '”');
+  $('#ltext').value = '';
+};
+function onSync(m) {
+  if (m.type === 'hello') { me = { name: m.name, port: m.port }; if (m.slide != null) go(m.slide, true); }   // join the slide everyone else is on
+  else if (m.type === 'tabs') renderPorts(m.list);
+  else if (m.type === 'msg') logLive(m.echo ? 'echo' : 'recv', (m.echo ? '↩ echo — you got your own message back' : '↓ from ' + m.from) + ' — “' + m.text + '”');
+  else if (m.type === 'slide') go(m.n, true);                      // another joined tab changed slide
+  else if (m.type === 'count') paint(m.n);
+}
+function trySync(urls) {
+  if (!urls.length) { syncEl.title = 'SharedWorker is not available in this browser'; $('#synct').textContent = 'SharedWorker unavailable'; return; }
+  const [url, ...rest] = urls;
+  let ok = false, sw;
+  const fail = () => { if (ok) return; ok = true; try { sw.port.close(); } catch (e) {} trySync(rest); };
+  try { sw = new SharedWorker(url, { name: 'deck-sync' }); } catch (e) { return trySync(rest); }
+  sw.onerror = fail;
+  const timer = setTimeout(fail, 4000);
+  sw.port.onmessage = e => {
+    if (!ok) {                           // first message = worker is alive
+      ok = true; clearTimeout(timer); syncPort = sw.port; syncSw = sw;
+      syncEl.title = 'Real SharedWorker · ' + location.origin + ' · ' + (url.startsWith('data:') ? 'inline data: URL' : url);
+    }
+    if (syncPort === sw.port) onSync(e.data);
+  };
+}
+function join() {
+  try { sessionStorage.left = ''; } catch (e) {}
+  $('#synct').textContent = 'Joining…';
+  trySync(['sync-worker.js', 'data:text/javascript;charset=utf-8,' + encodeURIComponent(syncSrc)]);
+}
+function leave() {
+  try { sessionStorage.left = '1'; } catch (e) {}   // remember an explicit leave
+  if (syncPort) { syncPort.postMessage({ type: 'bye' }); syncPort.close(); }
+  syncPort = syncSw = null; syncEl.title = ''; paint(null); me = null; renderPorts([]);
+}
+syncEl.onclick = () => syncPort ? leave() : join();
+addEventListener('pagehide', () => syncPort && syncPort.postMessage({ type: 'bye' }));
+
+/* ---------- boot ---------- */
+addEventListener('resize', fit);
+initAll(); render();
+document.fonts && document.fonts.ready.then(fit);
+go(Math.max(0, (parseInt(location.hash.slice(1)) || 1) - 1));
+requestAnimationFrame(fit);
+let left = false; try { left = !!sessionStorage.left; } catch (e) {}
+if (!left) join();                       // every tab joins automatically; the badge lets you leave
+})();
+</script>
+</body>
+</html>
