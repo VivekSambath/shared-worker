@@ -381,6 +381,19 @@ h1,.h1{letter-spacing:-.03em;text-wrap:balance}
 .dia6{min-width:0}
 .dia6 .tab{width:132px}
 @media (max-width:1100px){.s6{grid-template-columns:1fr}}
+/* slide 6, tablet: two diagrams side by side, live card full width below */
+@media (max-width:1240px) and (min-width:700px){
+  .s6{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .s6 .live{grid-column:1/-1}
+  .cmp{padding:12px 14px;gap:10px}
+  .cmph{flex-wrap:wrap;gap:6px 10px}
+  .dia6 .tab{width:104px;padding:8px 9px}
+  .dia6 .tab b{font-size:13px}
+  .dia6 .worker{width:84px;padding:10px 6px}
+  .dia6 .fanwrap{min-width:28px}
+  .rx{font-size:11px}
+  .llog{max-height:80px}
+}
 
 /* slide 4: real-world examples */
 .rwcard{padding:16px 20px}
